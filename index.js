@@ -1,90 +1,307 @@
-const express = require('express');
-const { Pool } = require('pg');
-const cors = require('cors');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Refaccionaria Mecanicus - Gestión de Inventario</title>
+  <style>
+    :root {
+      --primary: #d97706;
+      --primary-hover: #b45309;
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-app.use(cors());
-app.use(express.json());
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
-});
+    header {
+      margin-bottom: 30px;
+      text-align: center;
+    }
 
-const initDb = async () => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS usuarios (
-        id SERIAL PRIMARY KEY,
-        nombre VARCHAR(100) NOT NULL,
-        email VARCHAR(150) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        rol VARCHAR(20) DEFAULT 'cliente',
-        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    header h1 {
+      font-size: 2rem;
+      color: var(--primary);
+    }
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS piezas (
-        id SERIAL PRIMARY KEY,
-        codigo_parte VARCHAR(50) UNIQUE NOT NULL,
-        nombre VARCHAR(150) NOT NULL,
-        descripcion TEXT,
-        precio DECIMAL(10, 2) NOT NULL,
-        stock INT DEFAULT 0,
-        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    .container {
+      width: 100%;
+      max-width: 1000px;
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+    }
 
-    console.log('✅ Base de datos configurada correctamente.');
-  } catch (error) {
-    console.error('❌ Error configurando base de datos:', error);
-  }
-};
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
 
-initDb();
+    .card h2 {
+      margin-bottom: 15px;
+      font-size: 1.3rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
 
-app.get('/', (req, res) => {
-  res.send('API Refaccionaria Mecanicus activa 🚀');
-});
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
 
-app.post('/api/usuarios', async (req, res) => {
-  const { nombre, email, password, rol } = req.body;
-  try {
-    const result = await pool.query(
-      'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING id, nombre, email, rol, creado_en',
-      [nombre, email, password, rol || 'cliente']
-    );
-    res.status(201).json({ mensaje: 'Usuario registrado', usuario: result.rows[0] });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al registrar usuario' });
-  }
-});
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
 
-app.post('/api/piezas', async (req, res) => {
-  const { codigo_parte, nombre, descripcion, precio, stock } = req.body;
-  try {
-    const result = await pool.query(
-      'INSERT INTO piezas (codigo_parte, nombre, descripcion, precio, stock) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [codigo_parte, nombre, descripcion, precio, stock || 0]
-    );
-    res.status(201).json({ mensaje: 'Pieza registrada', pieza: result.rows[0] });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al registrar pieza' });
-  }
-});
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
 
-app.get('/api/piezas', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM piezas ORDER BY id DESC');
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al consultar piezas' });
-  }
-});
+    label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
 
-app.listen(PORT, () => {
-  console.log(`Servidor activo en el puerto ${PORT}`);
-});
+    input, textarea {
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px;
+      border-radius: 5px;
+      outline: none;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+
+    button {
+      background-color: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 12px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+      grid-column: 1 / -1;
+    }
+
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background-color: rgba(0, 0, 0, 0.2);
+      color: var(--primary);
+    }
+
+    tr:hover {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      background-color: rgba(217, 119, 6, 0.2);
+      color: var(--primary);
+    }
+
+    #mensaje {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
+
+    .exito { background-color: #15803d; color: #fff; }
+    .error { background-color: #b91c1c; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>⚙️ Refaccionaria Mecanicus</h1>
+    <p>Sistema de Gestión de Inventario</p>
+  </header>
+
+  <div class="container">
+    
+    <!-- Formulario para agregar piezas -->
+    <div class="card">
+      <h2>Registrar Nueva Pieza</h2>
+      <form id="piezaForm">
+        <div class="form-group">
+          <label for="codigo_parte">Código de Parte</label>
+          <input type="text" id="codigo_parte" placeholder="Ej. FIL-001" required>
+        </div>
+
+        <div class="form-group">
+          <label for="nombre">Nombre de la Pieza</label>
+          <input type="text" id="nombre" placeholder="Ej. Filtro de Aceite" required>
+        </div>
+
+        <div class="form-group">
+          <label for="precio">Precio ($)</label>
+          <input type="number" step="0.01" id="precio" placeholder="150.00" required>
+        </div>
+
+        <div class="form-group">
+          <label for="stock">Stock Disponible</label>
+          <input type="number" id="stock" placeholder="10" required>
+        </div>
+
+        <div class="form-group full-width">
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" rows="2" placeholder="Compatibilidad, marca, etc."></textarea>
+        </div>
+
+        <button type="submit">Guardar Pieza</button>
+      </form>
+      <div id="mensaje"></div>
+    </div>
+
+    <!-- Tabla con la lista de piezas -->
+    <div class="card">
+      <h2>Inventario Actual</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Precio</th>
+            <th>Stock</th>
+          </tr>
+        </thead>
+        <tbody id="tablaPiezas">
+          <tr>
+            <td colspan="6" style="text-align: center;">Cargando piezas...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    // URL de tu backend alojado en Render
+    const API_URL = 'https://refaccionariamecanicus.onrender.com/api/piezas';
+
+    // Función para consultar la base de datos y listar piezas
+    async function obtenerPiezas() {
+      try {
+        const res = await fetch(API_URL);
+        const piezas = await res.json();
+
+        const tbody = document.getElementById('tablaPiezas');
+        tbody.innerHTML = '';
+
+        if (piezas.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No hay piezas registradas aún.</td></tr>';
+          return;
+        }
+
+        piezas.forEach(pieza => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${pieza.id}</td>
+            <td><span class="badge">${pieza.codigo_parte}</span></td>
+            <td><strong>${pieza.nombre}</strong></td>
+            <td>${pieza.descripcion || 'Sin descripción'}</td>
+            <td>$${parseFloat(pieza.precio).toFixed(2)}</td>
+            <td>${pieza.stock}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (error) {
+        console.error('Error al cargar piezas:', error);
+        document.getElementById('tablaPiezas').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ef4444;">Error al conectar con el servidor.</td></tr>';
+      }
+    }
+
+    // Registrar nueva pieza al enviar el formulario
+    document.getElementById('piezaForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const nuevaPieza = {
+        codigo_parte: document.getElementById('codigo_parte').value,
+        nombre: document.getElementById('nombre').value,
+        precio: parseFloat(document.getElementById('precio').value),
+        stock: parseInt(document.getElementById('stock').value),
+        descripcion: document.getElementById('descripcion').value
+      };
+
+      const mensajeDiv = document.getElementById('mensaje');
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevaPieza)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          mensajeDiv.className = 'exito';
+          mensajeDiv.textContent = '✅ Pieza guardada correctamente.';
+          mensajeDiv.style.display = 'block';
+          document.getElementById('piezaForm').reset();
+          obtenerPiezas();
+        } else {
+          throw new Error(data.error || 'Error al guardar');
+        }
+      } catch (error) {
+        mensajeDiv.className = 'error';
+        mensajeDiv.textContent = '❌ ' + error.message;
+        mensajeDiv.style.display = 'block';
+      }
+
+      setTimeout(() => {
+        mensajeDiv.style.display = 'none';
+      }, 3000);
+    });
+
+    // Cargar la lista al abrir la página
+    obtenerPiezas();
+  </script>
+</body>
+</html>
