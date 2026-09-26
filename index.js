@@ -20,7 +20,39 @@ const pool = new Pool({
   }
 });
 
-// Ruta base
+// Función para crear las tablas automáticamente si no existen
+const inicializarBaseDeDatos = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS piezas (
+          id SERIAL PRIMARY KEY,
+          codigo_parte VARCHAR(50) NOT NULL,
+          nombre VARCHAR(100) NOT NULL,
+          descripcion TEXT,
+          precio NUMERIC(10, 2) NOT NULL,
+          stock INT NOT NULL DEFAULT 0,
+          creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS usuarios (
+          id SERIAL PRIMARY KEY,
+          nombre VARCHAR(100) NOT NULL,
+          email VARCHAR(100) UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+          rol VARCHAR(20) DEFAULT 'usuario',
+          creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✅ Tablas creadas/verificadas con éxito en PostgreSQL');
+  } catch (err) {
+    console.error('❌ Error al crear tablas:', err);
+  }
+};
+
+// Inicializar tablas al arrancar
+inicializarBaseDeDatos();
+
+// Ruta base de prueba
 app.get('/api', (req, res) => {
   res.send('API Refaccionaria Mecanicus activa 🚀');
 });
@@ -35,7 +67,7 @@ app.get('/api/piezas', async (req, res) => {
     const result = await pool.query('SELECT * FROM piezas ORDER BY id ASC');
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error('Error al obtener piezas:', err);
     res.status(500).json({ error: 'Error al obtener piezas' });
   }
 });
@@ -50,7 +82,7 @@ app.post('/api/piezas', async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error(err);
+    console.error('Error al registrar pieza:', err);
     res.status(500).json({ error: 'Error al registrar pieza' });
   }
 });
@@ -59,18 +91,16 @@ app.post('/api/piezas', async (req, res) => {
 // 2. RUTAS PARA USUARIOS
 // ==========================================
 
-// Obtener todos los usuarios
 app.get('/api/usuarios', async (req, res) => {
   try {
     const result = await pool.query('SELECT id, nombre, email, rol, creado_en FROM usuarios ORDER BY id ASC');
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error('Error al obtener usuarios:', err);
     res.status(500).json({ error: 'Error al obtener usuarios' });
   }
 });
 
-// Registrar un nuevo usuario
 app.post('/api/usuarios', async (req, res) => {
   const { nombre, email, password, rol } = req.body;
   try {
@@ -80,7 +110,7 @@ app.post('/api/usuarios', async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error(err);
+    console.error('Error al registrar usuario:', err);
     res.status(500).json({ error: 'Error al registrar usuario' });
   }
 });
