@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Refaccionaria Mecanicus - Gestión</title>
+  <title>Refaccionaria Mecanicus - Sistema Integral</title>
   <style>
     :root {
       --primary: #d97706;
@@ -29,7 +29,7 @@
     .full-width { grid-column: 1 / -1; }
     
     label { font-size: 0.9rem; color: var(--text-muted); }
-    input, textarea { background-color: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 5px; }
+    input, select, textarea { background-color: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 5px; }
     button { background-color: var(--primary); color: #fff; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; grid-column: 1 / -1; }
     button:hover { background-color: var(--primary-hover); }
     
@@ -46,11 +46,12 @@
 
   <header>
     <h1>⚙️ Refaccionaria Mecanicus</h1>
-    <p>Sistema de Gestión de Inventario y Autos</p>
+    <p>Gestión de Inventario, Autos y Usuarios</p>
   </header>
 
   <div class="container">
-    <!-- PIEZAS -->
+
+    <!-- 1. SECCIÓN PIEZAS -->
     <div class="card">
       <h2>Registrar Nueva Pieza</h2>
       <form id="piezaForm">
@@ -80,7 +81,7 @@
     </div>
 
     <div class="card">
-      <h2>Inventario Actual de Piezas</h2>
+      <h2>Inventario de Piezas</h2>
       <table>
         <thead>
           <tr>
@@ -98,7 +99,7 @@
       </table>
     </div>
 
-    <!-- AUTOS -->
+    <!-- 2. SECCIÓN AUTOS -->
     <div class="card">
       <h2>Registrar Nuevo Auto</h2>
       <form id="autoForm">
@@ -145,10 +146,57 @@
         </tbody>
       </table>
     </div>
+
+    <!-- 3. SECCIÓN USUARIOS -->
+    <div class="card">
+      <h2>Registrar Nuevo Usuario</h2>
+      <form id="usuarioForm">
+        <div class="form-group">
+          <label for="user_nombre">Nombre Completo</label>
+          <input type="text" id="user_nombre" placeholder="Ej. Carlos Mendoza" required>
+        </div>
+        <div class="form-group">
+          <label for="user_email">Correo Electrónico</label>
+          <input type="email" id="user_email" placeholder="carlos@mecanicus.com" required>
+        </div>
+        <div class="form-group">
+          <label for="user_password">Contraseña</label>
+          <input type="password" id="user_password" placeholder="******" required>
+        </div>
+        <div class="form-group">
+          <label for="user_rol">Rol de Usuario</label>
+          <select id="user_rol">
+            <option value="usuario">Usuario / Mecánico</option>
+            <option value="administrador">Administrador</option>
+          </select>
+        </div>
+        <button type="submit">Guardar Usuario</button>
+      </form>
+      <div id="mensajeUsuario" class="mensaje"></div>
+    </div>
+
+    <div class="card">
+      <h2>Lista de Usuarios</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Fecha Registro</th>
+          </tr>
+        </thead>
+        <tbody id="tablaUsuarios">
+          <tr><td colspan="5" style="text-align: center;">Cargando usuarios...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
   <script>
-    // --- PIEZAS ---
+    // --- 1. PIEZAS ---
     async function obtenerPiezas() {
       try {
         const res = await fetch('/api/piezas');
@@ -173,7 +221,7 @@
           `;
           tbody.appendChild(tr);
         });
-      } catch (error) {
+      } catch {
         document.getElementById('tablaPiezas').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ef4444;">Error al cargar piezas.</td></tr>';
       }
     }
@@ -209,7 +257,7 @@
       setTimeout(() => mensaje.style.display = 'none', 3000);
     });
 
-    // --- AUTOS ---
+    // --- 2. AUTOS ---
     async function obtenerAutos() {
       try {
         const res = await fetch('/api/autos');
@@ -234,7 +282,7 @@
           `;
           tbody.appendChild(tr);
         });
-      } catch (error) {
+      } catch {
         document.getElementById('tablaAutos').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ef4444;">Error al cargar autos.</td></tr>';
       }
     }
@@ -270,8 +318,70 @@
       setTimeout(() => mensaje.style.display = 'none', 3000);
     });
 
+    // --- 3. USUARIOS ---
+    async function obtenerUsuarios() {
+      try {
+        const res = await fetch('/api/usuarios');
+        const usuarios = await res.json();
+        const tbody = document.getElementById('tablaUsuarios');
+        tbody.innerHTML = '';
+
+        if (usuarios.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay usuarios registrados aún.</td></tr>';
+          return;
+        }
+
+        usuarios.forEach(u => {
+          const tr = document.createElement('tr');
+          const fecha = new Date(u.creado_en).toLocaleDateString('es-MX');
+          tr.innerHTML = `
+            <td>${u.id}</td>
+            <td><strong>${u.nombre}</strong></td>
+            <td>${u.email}</td>
+            <td><span class="badge">${u.rol}</span></td>
+            <td>${fecha}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch {
+        document.getElementById('tablaUsuarios').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ef4444;">Error al cargar usuarios.</td></tr>';
+      }
+    }
+
+    document.getElementById('usuarioForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nuevoUsuario = {
+        nombre: document.getElementById('user_nombre').value,
+        email: document.getElementById('user_email').value,
+        password: document.getElementById('user_password').value,
+        rol: document.getElementById('user_rol').value
+      };
+      const mensaje = document.getElementById('mensajeUsuario');
+      try {
+        const res = await fetch('/api/usuarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevoUsuario)
+        });
+        if (res.ok) {
+          mensaje.className = 'mensaje exito';
+          mensaje.textContent = '✅ Usuario registrado correctamente.';
+          mensaje.style.display = 'block';
+          document.getElementById('usuarioForm').reset();
+          obtenerUsuarios();
+        } else { throw new Error(); }
+      } catch {
+        mensaje.className = 'mensaje error';
+        mensaje.textContent = '❌ Error al registrar usuario.';
+        mensaje.style.display = 'block';
+      }
+      setTimeout(() => mensaje.style.display = 'none', 3000);
+    });
+
+    // Cargar todo al inicio
     obtenerPiezas();
     obtenerAutos();
+    obtenerUsuarios();
   </script>
 </body>
 </html>
