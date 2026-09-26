@@ -20,7 +20,7 @@ const pool = new Pool({
   }
 });
 
-// Función para crear las tablas automáticamente si no existen
+// Inicialización de tablas en la Base de Datos
 const inicializarBaseDeDatos = async () => {
   try {
     await pool.query(`
@@ -34,6 +34,16 @@ const inicializarBaseDeDatos = async () => {
           creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS autos (
+          id SERIAL PRIMARY KEY,
+          marca VARCHAR(50) NOT NULL,
+          modelo VARCHAR(50) NOT NULL,
+          anio INT NOT NULL,
+          placa VARCHAR(20) UNIQUE,
+          cliente VARCHAR(100),
+          creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS usuarios (
           id SERIAL PRIMARY KEY,
           nombre VARCHAR(100) NOT NULL,
@@ -43,36 +53,32 @@ const inicializarBaseDeDatos = async () => {
           creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Tablas creadas/verificadas con éxito en PostgreSQL');
+    console.log('✅ Tablas (piezas, autos, usuarios) creadas/verificadas en PostgreSQL');
   } catch (err) {
-    console.error('❌ Error al crear tablas:', err);
+    console.error('❌ Error al inicializar tablas:', err);
   }
 };
 
-// Inicializar tablas al arrancar
 inicializarBaseDeDatos();
 
-// Ruta base de prueba
+// Ruta base
 app.get('/api', (req, res) => {
   res.send('API Refaccionaria Mecanicus activa 🚀');
 });
 
 // ==========================================
-// 1. RUTAS PARA PIEZAS (INVENTARIO)
+// 1. RUTAS PARA PIEZAS
 // ==========================================
-
-// Obtener todas las piezas
 app.get('/api/piezas', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM piezas ORDER BY id ASC');
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener piezas:', err);
+    console.error(err);
     res.status(500).json({ error: 'Error al obtener piezas' });
   }
 });
 
-// Registrar una nueva pieza
 app.post('/api/piezas', async (req, res) => {
   const { codigo_parte, nombre, descripcion, precio, stock } = req.body;
   try {
@@ -82,21 +88,47 @@ app.post('/api/piezas', async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('Error al registrar pieza:', err);
+    console.error(err);
     res.status(500).json({ error: 'Error al registrar pieza' });
   }
 });
 
 // ==========================================
-// 2. RUTAS PARA USUARIOS
+// 2. RUTAS PARA AUTOS
 // ==========================================
+app.get('/api/autos', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM autos ORDER BY id ASC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener autos' });
+  }
+});
 
+app.post('/api/autos', async (req, res) => {
+  const { marca, modelo, anio, placa, cliente } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO autos (marca, modelo, anio, placa, cliente) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [marca, modelo, anio, placa, cliente]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al registrar auto' });
+  }
+});
+
+// ==========================================
+// 3. RUTAS PARA USUARIOS
+// ==========================================
 app.get('/api/usuarios', async (req, res) => {
   try {
     const result = await pool.query('SELECT id, nombre, email, rol, creado_en FROM usuarios ORDER BY id ASC');
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener usuarios:', err);
+    console.error(err);
     res.status(500).json({ error: 'Error al obtener usuarios' });
   }
 });
@@ -110,12 +142,11 @@ app.post('/api/usuarios', async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('Error al registrar usuario:', err);
+    console.error(err);
     res.status(500).json({ error: 'Error al registrar usuario' });
   }
 });
 
-// Iniciar servidor
 app.listen(port, () => {
   console.log(`Servidor ejecutándose en el puerto ${port}`);
 });
